@@ -1,13 +1,8 @@
-import React, { useState, useEffect } from "react";
-import {
-  MsalProvider,
-  useMsal,
-  useIsAuthenticated,
-} from "@azure/msal-react";
+import React, { useState } from "react";
+import { MsalProvider, useMsal, useIsAuthenticated } from "@azure/msal-react";
 import {
   PublicClientApplication,
   Configuration,
-  AuthenticationResult,
   RedirectRequest,
 } from "@azure/msal-browser";
 
@@ -15,13 +10,36 @@ import {
 const msalConfig: Configuration = {
   auth: {
     clientId: "c2c6d129-41c0-40b9-80dc-4839caed5f02",
-    authority: "https://login.microsoftonline.com/a2c0c009-2f46-46d9-87b9-d5ced8c0f47b", // or your tenant
-    redirectUri: "https://rameshfly-subscription-page-msa.vercel.app/", // 👈 your custom redirect URI
+    authority:
+      "https://login.microsoftonline.com/a2c0c009-2f46-46d9-87b9-d5ced8c0f47b", // or your tenant
+    redirectUri: "http://localhost:5173/", // 👈 your custom redirect URI
     postLogoutRedirectUri: "https://www.google.com/",
   },
 };
 
 const pca = new PublicClientApplication(msalConfig);
+
+(async () => {
+  try {
+    await pca.initialize(); // 👈 REQUIRED!
+    console.log("MSAL initialized.");
+
+    const result = await pca.handleRedirectPromise();
+
+    if (result) {
+      console.log("Redirect result received!", result);
+
+      window.ReactNativeWebView?.postMessage(
+        JSON.stringify({
+          token: result.accessToken,
+          account: result.account,
+        })
+      );
+    }
+  } catch (e) {
+    console.error("MSAL initialization/redirect error:", e);
+  }
+})();
 
 // Extend the Window interface to include ReactNativeWebView
 declare global {
@@ -81,28 +99,8 @@ const CustomLoginForm: React.FC = () => {
 };
 
 const Content: React.FC = () => {
-  const { instance, accounts } = useMsal();
+  const { accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-
-  // Handle redirect result (after returning from Azure login)
-  useEffect(() => {
-    instance.handleRedirectPromise().then((result) => {
-      if (result) {
-        const authResult = result as AuthenticationResult;
-        console.log("Access Token:", authResult.accessToken);
-
-        // Send to React Native via postMessage
-        setTimeout(() => {
-          window.ReactNativeWebView?.postMessage(
-            JSON.stringify({
-              token: authResult.accessToken,
-              account: authResult.account,
-            })
-          );
-        }, 3000);
-      }
-    });
-  }, [instance]);
 
   return (
     <div>
