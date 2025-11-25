@@ -92,12 +92,14 @@ const Content: React.FC = () => {
         console.log("Access Token:", authResult.accessToken);
 
         // Send to React Native via postMessage
-        window.ReactNativeWebView?.postMessage(
-          JSON.stringify({
-            token: authResult.accessToken,
-            account: authResult.account,
-          })
-        );
+        setTimeout(() => {
+          window.ReactNativeWebView?.postMessage(
+            JSON.stringify({
+              token: authResult.accessToken,
+              account: authResult.account,
+            })
+          );
+        }, 3000);
       }
     });
   }, [instance]);
