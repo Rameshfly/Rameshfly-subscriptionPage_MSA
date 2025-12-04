@@ -4,6 +4,7 @@ import {
   PublicClientApplication,
   Configuration,
   RedirectRequest,
+  EndSessionRequest,
 } from "@azure/msal-browser";
 
 // ================== MSAL Configuration ==================
@@ -12,7 +13,7 @@ const msalConfig: Configuration = {
     clientId: "c2c6d129-41c0-40b9-80dc-4839caed5f02",
     authority:
       "https://login.microsoftonline.com/a2c0c009-2f46-46d9-87b9-d5ced8c0f47b", // or your tenant
-    redirectUri: "https://rameshfly-subscription-page-msa.vercel.app/", // your custom redirect URI
+    redirectUri: "http://localhost:5173/", // your custom redirect URI
     postLogoutRedirectUri: "https://www.google.com/",
   },
 };
@@ -62,10 +63,11 @@ const CustomLoginForm: React.FC = () => {
     try {
       const request: RedirectRequest = {
         scopes: ["User.Read"],
-        loginHint: username || undefined, // optionally prefill username
+        // loginHint: username || undefined, // optionally prefill username
       };
 
       await instance.loginRedirect(request); // 🔁 Redirect flow
+      
     } catch (err) {
       console.error("Redirect login failed:", err);
     }
@@ -75,7 +77,7 @@ const CustomLoginForm: React.FC = () => {
     <div style={styles.container}>
       <h2>Sign in with Microsoft</h2>
 
-      <input
+      {/* <input
         type="text"
         placeholder="Email or username"
         value={username}
@@ -89,12 +91,54 @@ const CustomLoginForm: React.FC = () => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         style={styles.input}
-      />
+      /> */}
 
       <button onClick={handleLogin} style={styles.button}>
-        Login
+        Login with Microsoft
       </button>
     </div>
+  );
+};
+
+const LogoutButton: React.FC = () => {
+  const { instance, accounts } = useMsal();
+
+  const handleLogout = async () => {
+    try {
+      const logoutRequest: EndSessionRequest = {
+        account: accounts[0], // logout this account
+      };
+
+      // Notify React Native
+      window.ReactNativeWebView?.postMessage(
+        JSON.stringify({
+          type: "LOGOUT_INITIATED",
+        })
+      );
+
+      await instance.logoutRedirect(logoutRequest);
+
+      // After redirect completes, MSAL will automatically clear session
+      window.ReactNativeWebView?.postMessage(
+        JSON.stringify({
+          type: "LOGOUT_SUCCESS",
+        })
+      );
+    } catch (error) {
+      console.error("Logout error:", error);
+      window.ReactNativeWebView?.postMessage(
+        JSON.stringify({
+          type: "LOGOUT_ERROR",
+          error: String(error),
+        })
+      );
+    }
+  };
+
+  return (
+    <button onClick={handleLogout} style={styles.button}>
+      Logout
+    </button>
   );
 };
 
@@ -107,6 +151,7 @@ const Content: React.FC = () => {
       {isAuthenticated && accounts.length > 0 ? (
         <div style={styles.loggedIn}>
           <p>✅ Welcome, {accounts[0].username}</p>
+          <LogoutButton />
         </div>
       ) : (
         <CustomLoginForm />
